@@ -3,6 +3,7 @@ name = "cdtext"
 description = "A rough implementation of CD-Text parser."
 license = "MIT"
 authors = ["NDRAEY"]
+repository = "https://github.com/NDRAEY/cdtext"
 version = "0.1.0"
 edition = "2024"
 
