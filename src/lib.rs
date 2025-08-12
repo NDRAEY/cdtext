@@ -1,13 +1,13 @@
-use std::iter::Map;
-
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
+/// Main parser structure.
 pub struct CDText<'data> {
-    length: usize,
+    _length: usize,
     data: &'data [u8],
 }
 
+/// The pack type
 #[derive(Debug, FromPrimitive, PartialEq, Clone, Copy)]
 pub enum CDTextPackType {
     Title = 0x80,
@@ -25,31 +25,36 @@ pub enum CDTextPackType {
     BlockSizeInfo = 0x8f,
 }
 
+/// Track number entry referring to.
+/// Entry can refer to whole album or on separate track in it.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CDTextTrackNumber {
     WholeAlbum,
     Track(u8),
 }
 
+/// A pack itself.
 #[derive(Debug, Clone)]
 pub struct CDTextPack {
-    pack_type: CDTextPackType,
-    track_number: CDTextTrackNumber,
-    seq_counter: u8,
-    character_position: u8,
-    block_number: u8,
-    is_double_byte_characters: bool,
+    pub pack_type: CDTextPackType,
+    pub track_number: CDTextTrackNumber,
+    pub seq_counter: u8,
+    pub character_position: u8,
+    pub block_number: u8,
+    pub is_double_byte_characters: bool,
 
-    payload: [u8; 12],
-    crc: u16,
+    pub payload: [u8; 12],
+    pub crc: u16,
 }
 
+/// Data can be represented as string or raw data.
 #[derive(Debug, Clone)]
 pub enum CDTextEntryDataType {
     String(String),
     Data(Vec<u8>),
 }
 
+/// The processed entry.
 #[derive(Debug, Clone)]
 pub struct CDTextEntry {
     pub track_number: CDTextTrackNumber,
@@ -58,20 +63,25 @@ pub struct CDTextEntry {
 }
 
 impl<'data> CDText<'data> {
+    /// Creates a parser from data, assuming that first 4 bytes are used for service info.
+    /// First two bytes are the data length minus two.
     pub fn from_data_with_length(data: &'data [u8]) -> Self {
         Self {
-            length: (((data[0] as usize) << 8) | (data[1] as usize)) - 2,
+            _length: (((data[0] as usize) << 8) | (data[1] as usize)) - 2,
             data: &data[4..],
         }
     }
 
+    /// Creates a parser from data.
     pub fn from_data(data: &'data [u8]) -> Self {
         Self {
-            length: data.len(),
+            _length: data.len(),
             data,
         }
     }
 
+    /// Internal method. Parses a separate pack from data.
+    /// Data (sub)slice must be 18 bytes long.
     fn parse_pack(&self, subdata: &[u8]) -> Option<CDTextPack> {
         debug_assert!(subdata.len() == 18);
 
@@ -113,12 +123,14 @@ impl<'data> CDText<'data> {
         })
     }
 
+    /// Wrapper method.
     pub fn iter_pack_chunks(&self) -> impl Iterator<Item = Option<CDTextPack>> {
         // Each pack consists of a 4-byte header, 12 bytes of payload, and 2 bytes of CRC.
         // 4 + 12 + 2 = 18
         self.data.chunks(18).map(|x| self.parse_pack(x))
     }
 
+    /// Parses all the entries from the data and returns a Vec with parsed entries.
     pub fn parse(&self) -> Vec<CDTextEntry> {
         let mut payload_buffer: Vec<u8> = Vec::with_capacity(16);
         let mut prev_pack = self.iter_pack_chunks().next().unwrap().unwrap();
@@ -128,11 +140,13 @@ impl<'data> CDText<'data> {
         for pack in self.iter_pack_chunks().skip(1) {
             let pack = pack.as_ref().unwrap();
 
-            let index = if pack.character_position <= 12 {
-                12 - pack.character_position
-            } else {
-                0
-            } as usize;
+            // let index = if pack.character_position <= 12 {
+            //     12 - pack.character_position
+            // } else {
+            //     0
+            // } as usize;
+
+            let index = 12u8.saturating_sub(pack.character_position) as usize;
 
             match pack.pack_type {
                 CDTextPackType::Arrangers
@@ -146,6 +160,9 @@ impl<'data> CDText<'data> {
 
                     let is_terminal = before.ends_with(&[0]);
 
+                    // I don't know why 2.
+                    // More than one nul-terminated strings can be encountered in one entry (usually in short strings).
+                    // So we need to handle it somehow.
                     if before.iter().filter(|&x| *x == 0).count() == 2 {
                         // println!("===== INCREMENT! {before:?}");
 
@@ -189,10 +206,10 @@ impl<'data> CDText<'data> {
                         if let Some(ix) = len {
                             &before[..before.len() - ix]
                         } else {
-                            &before
+                            before
                         }
                     } else {
-                        &before
+                        before
                     });
 
                     // println!("Before: {before:?}");
@@ -216,9 +233,7 @@ impl<'data> CDText<'data> {
 
                     payload_buffer.extend_from_slice(after);
                 }
-                other_t => {
-                    // println!(">>> {other_t:?}");
-
+                _ => {
                     break;
                 },
             };

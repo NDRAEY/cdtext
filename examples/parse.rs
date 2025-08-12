@@ -18,7 +18,7 @@ fn main() {
 
     let cdtext = CDText::from_data_with_length(&data);
 
-    let data = cdtext.parse();
+    let data: Vec<cdtext::CDTextEntry> = cdtext.parse();
 
     for i in data {
         let displayable_track = match i.track_number {
