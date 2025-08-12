@@ -4,8 +4,11 @@ description = "A rough implementation of CD-Text parser."
 license = "MIT"
 authors = ["NDRAEY"]
 repository = "https://github.com/NDRAEY/cdtext"
+exclude = ["samples"]
 version = "0.1.0"
 edition = "2024"
+categories = ["no-std"]
+keywords = ["cd", "no_std"]
 
 [dependencies]
 num-derive = "0.4.2"

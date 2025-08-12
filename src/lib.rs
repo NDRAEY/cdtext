@@ -1,5 +1,8 @@
 #![no_std]
 
+extern crate alloc;
+
+use alloc::{borrow::ToOwned, string::String, vec::Vec};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
@@ -137,7 +140,7 @@ impl<'data> CDText<'data> {
         let mut payload_buffer: Vec<u8> = Vec::with_capacity(16);
         let mut prev_pack = self.iter_pack_chunks().next().unwrap().unwrap();
 
-        let mut parsed_data: Vec<CDTextEntry> = vec![];
+        let mut parsed_data: Vec<CDTextEntry> = Vec::new();
 
         for pack in self.iter_pack_chunks().skip(1) {
             let pack = pack.as_ref().unwrap();
